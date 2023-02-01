@@ -3,6 +3,20 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+Future<Text> getOrder() {
+  var df = DateFormat.yMMMd().format(DateTime.now());
+  final databaseReference = FirebaseFirestore.instance;
+  return databaseReference.collection("orders").get().then((snapshot) {
+    double sum = 0;
+    for (var document in snapshot.docs) {
+      double value = document.data()['total'] as double;
+      sum += double.parse(value.toString());
+    }
+    return Text('Sales as of $df is '+ 'P'+sum.toString(), style: TextStyle(fontSize: 15),) as Text;
+  });
+}
+
+
 class SumOrders extends StatelessWidget {
   const SumOrders({Key? key}) : super(key: key);
 
@@ -22,6 +36,23 @@ class SumOrders extends StatelessWidget {
               height: 35,
               child: Text('Sales', style:TextStyle(fontSize: 35, fontWeight: FontWeight.bold),),
             ),
+
+            SizedBox(
+              child: FutureBuilder<Text>(
+                future: getOrder(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return SizedBox(
+                      child: snapshot.data,
+                    );
+                  } else if (snapshot.hasError) {
+                    return Text("Error: ${snapshot.error}");
+                  }
+                  return CircularProgressIndicator();
+                },
+              ),
+            ),
+
             StreamBuilder(
               stream: FirebaseFirestore.instance.collection("orders").orderBy('createdAt', descending: true).where('isDelivered', isEqualTo: true).snapshots(),
               builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot){
@@ -38,14 +69,12 @@ class SumOrders extends StatelessWidget {
                       children: snapshot.data!.docs.map((snap) {
                         Timestamp timestamp = snap['createdAt'];
                         DateTime date = timestamp.toDate();
-                        double Total = 0.0;
-                        int order_id = snap['id'];
-                        if(date == date) {
-                          Total = snap['total'];
-                          print(Total);
-                        }
-                        return Card(
+                        double Total = snap['total'];
+                        List<String> list = Total.toString().split('.');
 
+                        int order_id = snap['id'];
+                        getOrder();
+                        return Card(
                           child:
                           ListTile(
                             //leading: Text(snap['age'].toString()),
@@ -63,18 +92,7 @@ class SumOrders extends StatelessWidget {
       ),
     );
   }
-  void getOrder() {
-    final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
-    _firebaseFirestore.collection('products').where('quantity').get().then((value){
-      value.docs.forEach((result) {
-        _firebaseFirestore.collection('orders')
-        .doc(result.id)
-        .get();
 
-        print(result.data());
-      });
-    });
-  }
 }
 
 
